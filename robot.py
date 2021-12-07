@@ -96,3 +96,50 @@ class robot(magicbot.MagicBot):
         NetworkTables.initialize(server="roborio");
         #Launch camera server for visual feed
         wpilib.CameraServer.launch()
+
+    #Reset all subsystems to their default state
+    def reset_subsystems(self):
+        self.drivetrain.reset()
+        self.limelight.reset()
+    
+    #Runs once every time teleop mode is enabled
+    def teleopInit(self):
+        self.reset_subsystems()
+    
+    #Loops while teleop mode is enabled, starts after init
+    def teleopPeriodic(self):
+        try:
+            #Get input from drivers
+            driver_x, driver_y = self.driver.get_curvature_output()
+
+            #Give driver commands to drivetrain if manual drive is enabled
+            if self.drivetrain.state == DrivetrainState.MANUAL_DRIVE:
+                self.drivetrain.curvature_drive(driver_y, driver_x)
+            
+            #Enable turbo mode (set maximum power values to those specified by turbo mode)
+            self.drivetrain.set_power_scaling(self.driver.process_turbo_mode())
+
+            #Set drivetrain to manual control if manual override button is pressed
+            if self.driver.get_manual_control_override():
+                self.drivetrain.state = DrivetrainState.MANUAL_DRIVE
+        except:
+            #Notify drivers if something goes wrogn
+            print("DRIVETRAIN ERROR")
+        
+        try:
+            #Enable intake suction
+            if self.sysop.get_intake_intake():
+                self.intake_roller.intake()
+            #Enable intake spitout
+            elif self.sysop.get_intake_outtake():
+                self.intake_roller.outtake()
+            #Disable intake
+            else:
+                self.intake_roller.stop()
+        except:
+            #Notify drivers if something goes wrong
+            print("INTAKE ROLLER ERROR")
+
+#Enable robot, this code always runs first
+if __name__ == '__main__':
+    wpilib.run(robot)
